@@ -1,0 +1,6 @@
+celery==4.2.1
+numpy==1.16.0
+openpyxl==2.5.14
+pandas==0.24.0
+PyYAML==3.13
+redis==3.1.0
