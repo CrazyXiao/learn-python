@@ -90,7 +90,7 @@ def get_next_page(head_url, soup):
 def get_page(head_url, url):
     """ 循环获取页面"""
     # 图片类型定义
-    mm_type = url.split('/')[-1].split('.')[0].split('-')[-1]
+    mm_type = url.split('/')[-1].split('.')[0].split('-')[1]
     r = get(url)
     soup = BeautifulSoup(r.text, 'html.parser')
     alist = soup.select('ul.img-list-data li a')
