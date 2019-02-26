@@ -9,6 +9,7 @@
 
 import os
 import requests
+from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
 from lxml import etree
 from multiprocessing import Process
@@ -21,19 +22,25 @@ url = "https://www.869ee.com"
 # 有的服务器不会响应，所以我们还可以在headers中加入referer
 # "referer": "xxxxxx"
 headers = {
-    "accept": "*/*",
+    "Accept": "*/*",
     "accept-language": "zh-CN,zh;q=0.9",
+    "Accept-Encoding": "gzip, deflate, sdch",
     "cookie": "__cfduid=d003f333c8fa21bdb61c4acbb10f0e82b1524496879",
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36"
 }
 OUTPUT = 'f:/output'
 
-def get(url):
-    """
-        伪装报头http访问
-    """
-    r = requests.get(url, headers=headers)
-    return r
+request_retry = HTTPAdapter(max_retries=3)
+
+def get(url, refer=None):
+    """ 返回url的响应"""
+    session = requests.session()
+    session.headers = headers
+    if refer:
+        headers["referer"] = refer
+    session.mount('https://', request_retry)
+    session.mount('http://', request_retry)
+    return session.get(url)
 
 def head(url):
     r = requests.head(url, headers=headers, allow_redirects=True)
@@ -54,14 +61,11 @@ def get_home_url():
     """
     return get_head() + '/index/home.html'
 
-def write_page(mm_type, img_srcs, page_name):
+def write_page(mm_type, img_srcs, path):
     """保存整页图片内容"""
-    path = os.path.join(OUTPUT, mm_type, page_name)
-    if os.path.exists(path):
-        return
-    os.makedirs(path)
     print("正在下载..." + path)
     for src in img_srcs:
+        src = src.strip()
         if not src:
             continue
         image = get(src).content
@@ -71,11 +75,15 @@ def write_page(mm_type, img_srcs, page_name):
 def load_image(mm_type, images_urls):
     """加载图片 """
     for url in images_urls:
-        content = etree.HTML(get(url).text)
+        path = os.path.join(OUTPUT, mm_type, os.path.split(url)[-1].split('.')[0])
+        if os.path.exists(path):
+            return
+        os.makedirs(path)
+        content = etree.HTML(get(url,url).text)
         img_srcs = content.xpath('//div[@class="content"]/img/@data-original')
         if not img_srcs:
             continue
-        write_page(mm_type, img_srcs, os.path.split(url)[-1].split('.')[0])
+        write_page(mm_type, img_srcs, path)
 
 def get_next_page(head_url, soup):
     """ 获取下一页地址"""
@@ -97,6 +105,7 @@ def get_page(head_url, url):
     links = [(head_url + codecs.escape_decode(item['href'].encode('unicode-escape'))[0].decode('utf8')) for item in
              alist]
     if links:
+        print(links)
         load_image(mm_type, links)
 
     # 获取下一页
