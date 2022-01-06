@@ -1,4 +1,4 @@
-celery==4.2.1
+celery==5.2.2
 numpy==1.16.0
 openpyxl==2.5.14
 pandas==0.24.0
